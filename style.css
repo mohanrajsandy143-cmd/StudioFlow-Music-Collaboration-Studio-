@@ -1,0 +1,884 @@
+
+/* ==========================================
+   STUDIOFLOW - MUSIC COLLABORATION STUDIO
+   Main JavaScript: script.js
+========================================== */
+
+"use strict";
+
+// ---------- HELPER FUNCTIONS ----------
+
+const $ = (selector) => document.querySelector(selector);
+
+const $$ = (selector) => document.querySelectorAll(selector);
+
+function createId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[character]);
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(1) + " KB";
+    }
+
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Recently";
+    }
+
+    return date.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+    });
+}
+
+// ---------- DEFAULT PROJECTS ----------
+
+const defaultProjects = [
+    {
+        id: "project-1",
+        name: "Midnight Dreams",
+        genre: "Electronic",
+        status: "In Progress",
+        tracks: 8,
+        collaborators: 4,
+        progress: 72,
+        color: "purple",
+        icon: "fa-moon",
+        updated: "2026-10-22T10:00:00"
+    },
+    {
+        id: "project-2",
+        name: "Golden Hour",
+        genre: "Pop",
+        status: "In Progress",
+        tracks: 5,
+        collaborators: 3,
+        progress: 45,
+        color: "orange",
+        icon: "fa-sun",
+        updated: "2026-10-21T15:00:00"
+    },
+    {
+        id: "project-3",
+        name: "Neon Nights",
+        genre: "Hip-Hop",
+        status: "Completed",
+        tracks: 6,
+        collaborators: 2,
+        progress: 100,
+        color: "blue",
+        icon: "fa-bolt",
+        updated: "2026-10-20T12:00:00"
+    },
+    {
+        id: "project-4",
+        name: "Ocean Waves",
+        genre: "Lo-Fi",
+        status: "Draft",
+        tracks: 2,
+        collaborators: 2,
+        progress: 20,
+        color: "green",
+        icon: "fa-water",
+        updated: "2026-10-19T09:00:00"
+    },
+    {
+        id: "project-5",
+        name: "Velvet Echo",
+        genre: "R&B",
+        status: "In Progress",
+        tracks: 4,
+        collaborators: 3,
+        progress: 61,
+        color: "pink",
+        icon: "fa-heart",
+        updated: "2026-10-18T11:00:00"
+    },
+    {
+        id: "project-6",
+        name: "Cinematic Rise",
+        genre: "Cinematic",
+        status: "Completed",
+        tracks: 7,
+        collaborators: 4,
+        progress: 100,
+        color: "indigo",
+        icon: "fa-film",
+        updated: "2026-10-17T13:00:00"
+    }
+];
+
+// ---------- LOCAL STORAGE ----------
+
+function loadProjects() {
+    try {
+        const saved = localStorage.getItem("studioflow-projects");
+
+        if (saved) {
+            const parsed = JSON.parse(saved);
+
+            if (Array.isArray(parsed)) {
+                return parsed;
+            }
+        }
+    } catch (error) {
+        console.warn("Could not load saved projects:", error);
+    }
+
+    return defaultProjects.map((project) => ({ ...project }));
+}
+
+let projects = loadProjects();
+let uploadedAudio = [];
+let currentSearch = "";
+let currentFilter = "all";
+let audioUrlCounter = 0;
+
+function saveProjects() {
+    try {
+        localStorage.setItem("studioflow-projects", JSON.stringify(projects));
+    } catch (error) {
+        showToast("Unable to save projects in this browser.", "error");
+    }
+}
+
+// ---------- TOAST NOTIFICATIONS ----------
+
+function showToast(message, type = "success") {
+    const container = $("#toastContainer");
+
+    if (!container) {
+        alert(message);
+        return;
+    }
+
+    const toast = document.createElement("div");
+    toast.className = "toast" + (type === "error" ? " error" : "");
+
+    const icon = document.createElement("i");
+    icon.className = type === "error"
+        ? "fa-solid fa-circle-exclamation"
+        : "fa-solid fa-circle-check";
+
+    const text = document.createElement("span");
+    text.textContent = message;
+
+    toast.append(icon, text);
+    container.appendChild(toast);
+
+    window.setTimeout(() => {
+        toast.remove();
+    }, 3200);
+}
+
+// ---------- DASHBOARD STATISTICS ----------
+
+function updateStats() {
+    $("#totalProjects").textContent = String(projects.length).padStart(2, "0");
+
+    const totalTracks = projects.reduce(
+        (sum, project) => sum + (Number(project.tracks) || 0),
+        0
+    );
+
+    const totalCollaborators = projects.reduce(
+        (sum, project) => sum + (Number(project.collaborators) || 0),
+        0
+    );
+
+    const completed = projects.filter(
+        (project) => project.status === "Completed"
+    ).length;
+
+    $("#totalTracks").textContent = String(totalTracks).padStart(2, "0");
+    $("#totalCollaborators").textContent =
+        String(totalCollaborators).padStart(2, "0");
+    $("#completedProjects").textContent = String(completed).padStart(2, "0");
+}
+
+// ---------- PROJECT CARDS ----------
+
+function getStatusClass(status) {
+    if (status === "Completed") return "status-completed";
+    if (status === "Draft") return "status-draft";
+    return "status-progress";
+}
+
+function renderProjects() {
+    const grid = $("#projectGrid");
+
+    const filteredProjects = projects.filter((project) => {
+        const matchesSearch = (
+            project.name + " " + project.genre + " " + project.status
+        ).toLowerCase().includes(currentSearch.toLowerCase());
+
+        const matchesFilter =
+            currentFilter === "all" || project.status === currentFilter;
+
+        return matchesSearch && matchesFilter;
+    });
+
+    if (filteredProjects.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <h3>No projects found</h3>
+                <p>Try another search or create a new project.</p>
+            </div>
+        `;
+
+        updateStats();
+        return;
+    }
+
+    grid.innerHTML = filteredProjects.map((project) => {
+        const safeName = escapeHTML(project.name);
+        const safeGenre = escapeHTML(project.genre);
+        const safeStatus = escapeHTML(project.status);
+        const color = ["purple", "blue", "orange", "green", "pink", "indigo"]
+            .includes(project.color) ? project.color : "purple";
+        const icon = /^fa-[a-z0-9-]+$/.test(project.icon || "")
+            ? project.icon
+            : "fa-music";
+        const progress = Math.min(100, Math.max(0, Number(project.progress) || 0));
+
+        return `
+            <article class="project-card" data-project-id="${escapeHTML(project.id)}">
+                <div class="project-cover cover-${color}">
+                    <div class="cover-icon">
+                        <i class="fa-solid ${icon}"></i>
+                    </div>
+
+                    <div class="project-menu">
+                        <button
+                            class="icon-btn project-menu-btn"
+                            data-id="${escapeHTML(project.id)}"
+                            aria-label="Project options"
+                            title="Project options">
+                            <i class="fa-solid fa-ellipsis"></i>
+                        </button>
+
+                        <div class="project-menu-options" hidden>
+                            <button data-action="complete" data-id="${escapeHTML(project.id)}">
+                                <i class="fa-solid fa-circle-check"></i>
+                                Mark completed
+                            </button>
+                            <button data-action="delete" data-id="${escapeHTML(project.id)}"
+                                class="delete-project">
+                                <i class="fa-solid fa-trash"></i>
+                                Delete project
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-info">
+                    <div class="project-title-row">
+                        <div>
+                            <h3>${safeName}</h3>
+                            <p class="project-genre">${safeGenre}</p>
+                        </div>
+                        <span class="status-badge ${getStatusClass(project.status)}">
+                            ${safeStatus}
+                        </span>
+                    </div>
+
+                    <div class="project-meta">
+                        <span><i class="fa-solid fa-wave-square"></i>
+                            ${Number(project.tracks) || 0} tracks</span>
+                        <span><i class="fa-solid fa-users"></i>
+                            ${Number(project.collaborators) || 0} people</span>
+                    </div>
+
+                    <div class="project-progress">
+                        <div class="progress-label">
+                            <span>Project progress</span>
+                            <strong>${progress}%</strong>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+
+                    <button class="project-open-btn" data-open-id="${escapeHTML(project.id)}">
+                        Open project <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </article>
+        `;
+    }).join("");
+
+    updateStats();
+}
+
+// ---------- CREATE PROJECT MODAL ----------
+
+const modal = $("#projectModal");
+const projectForm = $("#projectForm");
+
+function openModal() {
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    $("#projectName").focus();
+}
+
+function closeModal() {
+    modal.hidden = true;
+    document.body.style.overflow = "";
+    projectForm.reset();
+}
+
+$("#createProjectBtn").addEventListener("click", openModal);
+$("#closeModalBtn").addEventListener("click", closeModal);
+$("#cancelModalBtn").addEventListener("click", closeModal);
+
+modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+        closeModal();
+    }
+});
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) {
+        closeModal();
+    }
+});
+
+projectForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const name = $("#projectName").value.trim();
+    const genre = $("#projectGenre").value;
+    const status = $("#projectStatus").value;
+
+    if (!name) {
+        showToast("Please enter a project name.", "error");
+        return;
+    }
+
+    const colors = ["purple", "blue", "orange", "green", "pink", "indigo"];
+    const icons = {
+        "Electronic": "fa-bolt",
+        "Hip-Hop": "fa-microphone",
+        "Pop": "fa-star",
+        "Lo-Fi": "fa-cloud-moon",
+        "Rock": "fa-guitar",
+        "Cinematic": "fa-film",
+        "R&B": "fa-heart",
+        "Other": "fa-music"
+    };
+
+    const newProject = {
+        id: createId(),
+        name,
+        genre,
+        status,
+        tracks: 0,
+        collaborators: 1,
+        progress: status === "Completed" ? 100 : status === "Draft" ? 10 : 25,
+        color: colors[projects.length % colors.length],
+        icon: icons[genre] || "fa-music",
+        updated: new Date().toISOString()
+    };
+
+    projects.unshift(newProject);
+    saveProjects();
+
+    currentSearch = "";
+    $("#searchInput").value = "";
+    currentFilter = "all";
+    $("#statusFilter").value = "all";
+
+    renderProjects();
+    closeModal();
+    showToast(`"${name}" project created successfully!`);
+    addActivity(`You created "${name}"`, "fa-folder-plus", "purple-icon");
+});
+
+// ---------- SEARCH PROJECTS ----------
+
+$("#searchInput").addEventListener("input", (event) => {
+    currentSearch = event.target.value.trim();
+    renderProjects();
+});
+
+$("#statusFilter").addEventListener("change", (event) => {
+    currentFilter = event.target.value;
+    renderProjects();
+});
+
+$("#viewAllBtn").addEventListener("click", () => {
+    currentFilter = "all";
+    currentSearch = "";
+
+    $("#statusFilter").value = "all";
+    $("#searchInput").value = "";
+
+    renderProjects();
+    showToast("Showing all projects.");
+});
+
+// Search shortcut: Ctrl+K or Cmd+K
+document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        $("#searchInput").focus();
+    }
+});
+
+// ---------- PROJECT MENU ACTIONS ----------
+
+$("#projectGrid").addEventListener("click", (event) => {
+    const menuButton = event.target.closest(".project-menu-btn");
+
+    if (menuButton) {
+        const menu = menuButton.parentElement.querySelector(".project-menu-options");
+        const wasHidden = menu.hidden;
+
+        $$(".project-menu-options").forEach((item) => {
+            item.hidden = true;
+        });
+
+        menu.hidden = !wasHidden;
+        return;
+    }
+
+    const actionButton = event.target.closest("[data-action]");
+
+    if (actionButton) {
+        const project = projects.find(
+            (item) => item.id === actionButton.dataset.id
+        );
+
+        if (!project) return;
+
+        if (actionButton.dataset.action === "complete") {
+            project.status = "Completed";
+            project.progress = 100;
+            project.updated = new Date().toISOString();
+
+            saveProjects();
+            renderProjects();
+            addActivity(`"${project.name}" marked completed`, "fa-circle-check", "green-icon");
+            showToast("Project marked as completed.");
+        }
+
+        if (actionButton.dataset.action === "delete") {
+            const confirmed = window.confirm(
+                `Delete "${project.name}"? This cannot be undone.`
+            );
+
+            if (confirmed) {
+                projects = projects.filter((item) => item.id !== project.id);
+                saveProjects();
+                renderProjects();
+                showToast("Project deleted.");
+            }
+        }
+
+        return;
+    }
+
+    const openButton = event.target.closest("[data-open-id]");
+
+    if (openButton) {
+        const project = projects.find(
+            (item) => item.id === openButton.dataset.openId
+        );
+
+        if (project) {
+            showToast(`"${project.name}" selected. Full audio editor can be added next.`);
+        }
+    }
+});
+
+// Close project menus when clicking elsewhere
+document.addEventListener("click", (event) => {
+    if (!event.target.closest(".project-menu")) {
+        $$(".project-menu-options").forEach((menu) => {
+            menu.hidden = true;
+        });
+    }
+});
+
+// ---------- ACTIVITY FEED ----------
+
+function addActivity(message, icon, iconClass) {
+    const list = $("#activityList");
+    const item = document.createElement("div");
+
+    item.className = "activity-item";
+
+    const avatar = document.createElement("div");
+    avatar.className = `activity-avatar ${iconClass}`;
+
+    const avatarIcon = document.createElement("i");
+    avatarIcon.className = `fa-solid ${icon}`;
+    avatar.appendChild(avatarIcon);
+
+    const details = document.createElement("div");
+    details.className = "activity-details";
+
+    const text = document.createElement("p");
+    text.textContent = message;
+
+    const time = document.createElement("span");
+    time.textContent = "Just now";
+
+    details.append(text, time);
+    item.append(avatar, details);
+    list.prepend(item);
+
+    while (list.children.length > 6) {
+        list.lastElementChild.remove();
+    }
+}
+
+// ---------- AUDIO UPLOAD ----------
+
+const audioInput = $("#audioInput");
+const dropZone = $("#dropZone");
+const uploadedList = $("#uploadedList");
+
+const allowedAudioExtensions = [".wav", ".mp3", ".aiff", ".aif"];
+
+function isSupportedAudio(file) {
+    const lowerName = file.name.toLowerCase();
+
+    return allowedAudioExtensions.some((extension) =>
+        lowerName.endsWith(extension)
+    );
+}
+
+function addAudioFiles(fileList) {
+    const files = Array.from(fileList || []);
+
+    if (files.length === 0) return;
+
+    files.forEach((file) => {
+        if (!isSupportedAudio(file)) {
+            showToast(`${file.name}: unsupported format.`, "error");
+            return;
+        }
+
+        const audio = {
+            id: `audio-${createId()}`,
+            name: file.name,
+            size: file.size,
+            file,
+            url: URL.createObjectURL(file),
+            isPlaying: false
+        };
+
+        uploadedAudio.push(audio);
+        renderUploadedAudio();
+
+        addActivity(`Uploaded "${file.name}"`, "fa-file-audio", "blue-icon");
+        showToast(`${file.name} added to this session.`);
+    });
+
+    audioInput.value = "";
+}
+
+function renderUploadedAudio() {
+    uploadedList.innerHTML = "";
+
+    uploadedAudio.forEach((audio) => {
+        const item = document.createElement("div");
+        item.className = "uploaded-item";
+
+        const fileIcon = document.createElement("div");
+        fileIcon.className = "uploaded-file-icon";
+
+        const icon = document.createElement("i");
+        icon.className = "fa-solid fa-file-audio";
+        fileIcon.appendChild(icon);
+
+        const info = document.createElement("div");
+        info.className = "uploaded-file-info";
+
+        const name = document.createElement("strong");
+        name.textContent = audio.name;
+        name.title = audio.name;
+
+        const size = document.createElement("span");
+        size.textContent = formatFileSize(audio.size);
+
+        info.append(name, size);
+
+        const actions = document.createElement("div");
+        actions.className = "uploaded-file-actions";
+
+        const playButton = document.createElement("button");
+        playButton.type = "button";
+        playButton.title = "Play audio";
+        playButton.setAttribute("aria-label", `Play ${audio.name}`);
+
+        const playIcon = document.createElement("i");
+        playIcon.className = "fa-solid fa-play";
+        playButton.appendChild(playIcon);
+
+        playButton.addEventListener("click", () => {
+            playAudio(audio.id);
+        });
+
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.className = "remove-audio";
+        removeButton.title = "Remove audio";
+        removeButton.setAttribute("aria-label", `Remove ${audio.name}`);
+
+        const removeIcon = document.createElement("i");
+        removeIcon.className = "fa-solid fa-trash";
+        removeButton.appendChild(removeIcon);
+
+        removeButton.addEventListener("click", () => {
+            removeAudio(audio.id);
+        });
+
+        actions.append(playButton, removeButton);
+        item.append(fileIcon, info, actions);
+        uploadedList.appendChild(item);
+    });
+}
+
+function playAudio(audioId) {
+    const audio = uploadedAudio.find((item) => item.id === audioId);
+
+    if (!audio) return;
+
+    const playerId = `studioflow-player-${audioId}`;
+    let player = document.getElementById(playerId);
+
+    if (!player) {
+        player = document.createElement("audio");
+        player.id = playerId;
+        player.src = audio.url;
+        player.preload = "metadata";
+        player.hidden = true;
+
+        player.addEventListener("ended", () => {
+            audio.isPlaying = false;
+        });
+
+        player.addEventListener("error", () => {
+            showToast("This audio file could not be played.", "error");
+        });
+
+        document.body.appendChild(player);
+    }
+
+    if (!player.paused) {
+        player.pause();
+        audio.isPlaying = false;
+        showToast("Audio paused.");
+        return;
+    }
+
+    // Stop other StudioFlow audio players before starting this one.
+    $$("audio[id^='studioflow-player-']").forEach((otherPlayer) => {
+        otherPlayer.pause();
+        otherPlayer.currentTime = 0;
+    });
+
+    player.play()
+        .then(() => {
+            audio.isPlaying = true;
+            showToast(`Playing "${audio.name}"`);
+        })
+        .catch(() => {
+            showToast("Unable to play this audio file.", "error");
+        });
+}
+
+function removeAudio(audioId) {
+    const audio = uploadedAudio.find((item) => item.id === audioId);
+
+    if (!audio) return;
+
+    const player = document.getElementById(`studioflow-player-${audioId}`);
+
+    if (player) {
+        player.pause();
+        player.remove();
+    }
+
+    URL.revokeObjectURL(audio.url);
+    uploadedAudio = uploadedAudio.filter((item) => item.id !== audioId);
+
+    renderUploadedAudio();
+    showToast("Audio removed from this session.");
+}
+
+audioInput.addEventListener("change", (event) => {
+    addAudioFiles(event.target.files);
+});
+
+dropZone.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    dropZone.classList.add("drag-over");
+});
+
+dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("drag-over");
+});
+
+dropZone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    dropZone.classList.remove("drag-over");
+    addAudioFiles(event.dataTransfer.files);
+});
+
+// ---------- SIDEBAR NAVIGATION ----------
+
+const sidebar = $("#sidebar");
+const dashboardPage = $("#dashboardPage");
+const secondaryPage = $("#secondaryPage");
+
+const pageDescriptions = {
+    "My Projects": "Browse and manage your music projects.",
+    "Audio Tracks": "Manage the audio files uploaded in this session.",
+    "Version History": "Review project changes and plan your next version.",
+    "Royalty Splits": "Organize royalty percentages with your collaborators.",
+    "Collaborators": "Keep your creative team organized.",
+    "Settings": "Customize your StudioFlow workspace."
+};
+
+function navigateTo(page) {
+    $("#currentPage").textContent = page;
+    $("#pageTitle").textContent = page;
+
+    $$(".nav-link[data-page]").forEach((link) => {
+        link.classList.toggle("active", link.dataset.page === page);
+    });
+
+    if (page === "Dashboard") {
+        dashboardPage.hidden = false;
+        secondaryPage.hidden = true;
+    } else {
+        dashboardPage.hidden = true;
+        secondaryPage.hidden = false;
+
+        $("#secondaryTitle").textContent = page;
+        $("#secondaryDescription").textContent =
+            pageDescriptions[page] || "Explore your music workspace.";
+
+        if (page === "My Projects") {
+            $("#secondaryDescription").textContent =
+                "Your projects are available on the Dashboard. Use search and filters to find them.";
+        }
+
+        if (page === "Audio Tracks") {
+            $("#secondaryDescription").textContent =
+                `${uploadedAudio.length} audio file(s) uploaded in this browser session.`;
+        }
+    }
+
+    sidebar.classList.remove("sidebar-open");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+$$(".nav-link[data-page]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+        event.preventDefault();
+        navigateTo(link.dataset.page);
+    });
+});
+
+$("#backToDashboardBtn").addEventListener("click", () => {
+    navigateTo("Dashboard");
+});
+
+$("#menuBtn").addEventListener("click", () => {
+    sidebar.classList.toggle("sidebar-open");
+});
+
+document.addEventListener("click", (event) => {
+    if (
+        window.innerWidth <= 850 &&
+        !sidebar.contains(event.target) &&
+        !event.target.closest("#menuBtn")
+    ) {
+        sidebar.classList.remove("sidebar-open");
+    }
+});
+
+// ---------- THEME TOGGLE ----------
+
+const themeBtn = $("#themeBtn");
+const savedTheme = localStorage.getItem("studioflow-theme");
+
+if (savedTheme === "light") {
+    document.body.classList.add("light-theme");
+}
+
+function updateThemeIcon() {
+    const icon = themeBtn.querySelector("i");
+
+    if (document.body.classList.contains("light-theme")) {
+        icon.className = "fa-solid fa-sun";
+    } else {
+        icon.className = "fa-solid fa-moon";
+    }
+}
+
+updateThemeIcon();
+
+themeBtn.addEventListener("click", () => {
+    document.body.classList.toggle("light-theme");
+
+    const theme = document.body.classList.contains("light-theme")
+        ? "light"
+        : "dark";
+
+    try {
+        localStorage.setItem("studioflow-theme", theme);
+    } catch (error) {
+        console.warn("Could not save theme preference.");
+    }
+
+    updateThemeIcon();
+    showToast(`${theme === "light" ? "Light" : "Dark"} theme enabled.`);
+});
+
+// ---------- OTHER TOP BAR BUTTONS ----------
+
+$("#notificationBtn").addEventListener("click", () => {
+    showToast("You're all caught up!");
+});
+
+$("#profileBtn").addEventListener("click", () => {
+    showToast("Profile settings can be connected next.");
+});
+
+$("#upgradeBtn").addEventListener("click", () => {
+    showToast("Studio tools are ready to be expanded.");
+});
+
+$("#activityMenuBtn").addEventListener("click", () => {
+    showToast("Recent activity is displayed below.");
+});
+
+// ---------- INITIALIZE DASHBOARD ----------
+
+renderProjects();
+updateStats();
+
+console.log("StudioFlow Music Collaboration Studio loaded successfully.");

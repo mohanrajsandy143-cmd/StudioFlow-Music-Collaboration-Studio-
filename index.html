@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudioFlow - Music Collaboration Studio</title>
+
+<style>
+:root {
+  --bg: #0c0d12;
+  --panel: #151722;
+  --line: #292b3a;
+  --text: #f4f4f8;
+  --muted: #9295a8;
+  --purple: #9b87ff;
+  --green: #72e2b2;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+}
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible {
+  outline: 2px solid var(--purple);
+}
+.layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 230px;
+  background: #101118;
+  border-right: 1px solid var(--line);
+  padding: 24px 15px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  overflow-y: auto;
+}
+.logo { font-size: 23px; font-weight: bold; margin-bottom: 30px; }
+.logo span { color: var(--purple); }
+.nav {
+  display: block;
+  width: 100%;
+  padding: 13px;
+  margin: 5px 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  text-align: left;
+}
+.nav:hover, .nav.active { background: #292538; color: white; }
+.main { margin-left: 230px; width: calc(100% - 230px); padding: 22px 30px 50px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+input, select, textarea {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px;
+  max-width: 100%;
+}
+.primary, .secondary, .danger {
+  padding: 11px 15px;
+  border-radius: 8px;
+  border: 0;
+  margin: 3px;
+}
+.primary { background: var(--purple); color: #15121e; font-weight: bold; }
+.secondary { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+.danger { background: #381b25; color: #ffb3bd; border: 1px solid #693344; }
+.page { display: none; padding-top: 25px; }
+.page.active { display: block; }
+h1 { font-size: 30px; margin-bottom: 8px; }
+h2 { font-size: 20px; }
+.muted { color: var(--muted); }
+.stats, .grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+  margin: 22px 0;
+}
+.grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 18px;
+  min-width: 0;
+}
+.stat-number { font-size: 29px; font-weight: bold; margin: 14px 0 5px; }
+.project-cover {
+  height: 100px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(130deg, #312452, #8055a7);
+  font-size: 40px;
+  margin-bottom: 15px;
+}
+.project-cover.green { background: linear-gradient(130deg, #143c42, #328e85); }
+.project-cover.orange { background: linear-gradient(130deg, #493126, #bf7950); }
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 25px 0 15px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.row .grow { flex: 1; min-width: 120px; }
+.row small { display: block; color: var(--muted); margin-top: 5px; }
+audio { width: 100%; max-width: 300px; }
+.wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 38px;
+  overflow: hidden;
+}
+.wave span {
+  width: 4px;
+  min-width: 4px;
+  background: var(--purple);
+  border-radius: 5px;
+}
+label { display: block; margin: 12px 0; }
+label input, label select, label textarea { display: block; width: 100%; margin-top: 7px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 5px; border-bottom: 1px solid var(--line); }
+td input { width: 100%; min-width: 60px; }
+.table-wrap { overflow-x: auto; }
+.steps {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 7px;
+  margin: 20px 0;
+}
+.step {
+  padding: 14px 2px;
+  border: 1px solid var(--line);
+  background: #20222e;
+  color: var(--text);
+  border-radius: 7px;
+}
+.step.on { background: var(--purple); color: #15121e; }
+.notice {
+  background: #211d31;
+  border: 1px solid #51466f;
+  padding: 13px;
+  border-radius: 9px;
+  color: #d2c8ff;
+  line-height: 1.5;
+  margin: 15px 0;
+}
+#toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #282838;
+  border: 1px solid var(--line);
+  padding: 14px 18px;
+  border-radius: 10px;
+  display: none;
+  z-index: 99;
+}
+.empty { color: var(--muted); padding: 20px 0; }
+@media(max-width:1000px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media(max-width:700px) {
+  .sidebar { display: none; }
+  .main { margin: 0; width: 100%; padding: 15px; }
+  .grid, .stats { grid-template-columns: 1fr; }
+  .topbar { flex-wrap: wrap; }
+  .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+</style>
+</head>
+
+<body>
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="logo">♫ Studio<span>Flow</span></div>
+  <button class="nav active" data-page="Dashboard">⌂ Dashboard</button>
+  <button class="nav" data-page="Projects">♫ Projects</button>
+  <button class="nav" data-page="Tracks">▤ Audio Tracks</button>
+  <button class="nav" data-page="Mixer">🎚 Mixer</button>
+  <button class="nav" data-page="Sequencer">▦ Beat Sequencer</button>
+  <button class="nav" data-page="Versions">◷ Version History</button>
+  <button class="nav" data-page="Collaborators">♙ Collaborators</button>
+  <button class="nav" data-page="Messages">✉ Messages</button>
+  <button class="nav" data-page="Royalties">％ Royalties</button>
+  <button class="nav" data-page="Marketplace">♬ Beat Marketplace</button>
+  <button class="nav" data-page="Distribution">↗ Distribution</button>
+  <button class="nav" data-page="Settings">⚙ Settings</button>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div>
+      <strong>StudioFlow</strong>
+      <div class="muted">Music Collaboration Studio</div>
+    </div>
+    <div>
+      <input id="search" placeholder="Search projects..." aria-label="Search projects">
+      <button class="primary" id="newProject">+ New Project</button>
+    </div>
+  </header>
+
+  <section class="page active" id="Dashboard">
+    <h1>Welcome to your studio 👋</h1>
+    <p class="muted">Create music, manage projects, and work with your collaborators.</p>
+
+    <div class="stats">
+      <div class="card"><div class="muted">Total Projects</div><div class="stat-number" id="projectCount">0</div></div>
+      <div class="card"><div class="muted">Audio Tracks</div><div class="stat-number" id="trackCount">0</div></div>
+      <div class="card"><div class="muted">Collaborators</div><div class="stat-number" id="collabCount">0</div></div>
+      <div class="card"><div class="muted">Saved Versions</div><div class="stat-number" id="versionCount">0</div></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Recent Projects</h2>
+      <button class="secondary" data-goto="Projects">View all</button>
+    </div>
+    <div class="grid" id="dashboardProjects"></div>
+  </section>
+
+  <section class="page" id="Projects">
+    <h1>Projects</h1>
+    <p class="muted">Create and manage your music projects.</p>
+    <div class="section-head">
+      <h2>Your Projects</h2>
+      <button class="primary" id="newProject2">+ Create Project</button>
+    </div>
+    <div class="grid" id="projectList"></div>
+  </section>
+
+  <section class="page" id="Tracks">
+    <h1>Audio Tracks</h1>
+    <p class="muted">Upload and preview audio files stored on your device.</p>
+    <div class="card">
+      <h2>Upload Audio</h2>
+      <p class="muted">Supported formats depend on your browser: MP3, WAV, AIFF and other audio formats.</p>
+      <input type="file" id="audioFiles" accept="audio/*" multiple>
+      <div id="uploadList"></div>
+    </div>
+    <div class="card">
+      <h2>Waveform Preview</h2>
+      <p class="muted">Decorative waveform preview for the studio interface.</p>
+      <div class="wave" id="wave"></div>
+    </div>
+  </section>
+
+  <section class="page" id="Mixer">
+    <h1>Mixing Console</h1>
+    <p class="muted">Control playback volume for uploaded tracks.</p>
+    <div class="card">
+      <label>Master Volume <span id="masterLabel">80%</span>
+        <input id="masterVolume" type="range" min="0" max="100" value="80">
+      </label>
+      <div id="mixerTracks"></div>
+    </div>
+  </section>
+
+  <section class="page" id="Sequencer">
+    <h1>Beat Sequencer</h1>
+    <p class="muted">Create a simple 16-step beat using browser-generated sounds.</p>
+    <div class="card">
+      <label>Tempo (BPM)
+        <input type="number" id="tempo" min="40" max="220" value="110">
+      </label>
+      <label>Sound
+        <select id="soundType">
+          <option value="kick">Kick</option>
+          <option value="snare">Snare</option>
+          <option value="hat">Hi-hat</option>
+        </select>
+      </label>
+      <div class="steps" id="steps"></div>
+      <button class="primary" id="playBeat">▶ Play Pattern</button>
+      <button class="secondary" id="clearBeat">Clear Pattern</button>
+    </div>
+  </section>
+
+  <section class="page" id="Versions">
+    <h1>Version History</h1>
+    <p class="muted">Save snapshots of your project list in this browser.</p>
+    <button class="primary" id="saveVersion">Save Snapshot</button>
+    <div class="card" style="margin-top:18px" id="versionList"></div>
+  </section>
+
+  <section class="page" id="Collaborators">
+    <h1>Collaborators</h1>
+    <div class="card">
+      <h2>Add Collaborator</h2>
+      <form id="collabForm">
+        <label>Name<input id="collabName" required placeholder="Collaborator name"></label>
+        <label>Email<input id="collabEmail" type="email" placeholder="Email address"></label>
+        <button class="primary">Add Collaborator</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Your Team</h2>
+      <div id="collaboratorList"></div>
+    </div>
+  </section>
+
+  <section class="page" id="Messages">
+    <h1>Studio Messages</h1>
+    <div class="card">
+      <p class="muted">Demo messages are kept only in the current page session.</p>
+      <form id="messageForm">
+        <label>Message<textarea id="messageText" required rows="3" placeholder="Write a studio note..."></textarea></label>
+        <button class="primary">Send Message</button>
+      </form>
+      <div id="messageList"></div>
+    </div>
+  </section>
+
+  <section class="page" id="Royalties">
+    <h1>Royalty Splits</h1>
+    <p class="muted">Edit contributor shares. The total must equal 100% to save.</p>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Role</th><th>Share %</th><th></th></tr></thead>
+          <tbody id="royaltyRows"></tbody>
+        </table>
+      </div>
+      <h3>Total: <span id="royaltyTotal">100</span>%</h3>
+      <div class="section-head">
+        <button class="secondary" id="addRoyalty">+ Add Contributor</button>
+        <button class="primary" id="saveRoyalty">Save Splits</button>
+      </div>
+      <div id="royaltyStatus" class="muted"></div>
+      <div class="notice">This is a local demo, not a legally binding contract or electronic signature.</div>
+    </div>
+  </section>
+
+  <section class="page" id="Marketplace">
+    <h1>Beat Marketplace</h1>
+    <p class="muted">Sample beat listings for the prototype.</p>
+    <div class="grid" id="beatList"></div>
+  </section>
+
+  <section class="page" id="Distribution">
+    <h1>Music Distribution</h1>
+    <p class="muted">Prepare your release before submitting it to a distributor.</p>
+    <div class="card">
+      <label>Release Title<input id="releaseTitle" placeholder="Enter song title"></label>
+      <label>Artist Name<input id="artistName" placeholder="Artist name"></label>
+      <label>Release Date<input id="releaseDate" type="date"></label>
+      <h2>Release Checklist</h2>
+      <label><input type="checkbox" class="releaseCheck"> Final audio master is ready</label>
+      <label><input type="checkbox" class="releaseCheck"> Cover artwork is ready</label>
+      <label><input type="checkbox" class="releaseCheck"> Contributor credits are confirmed</label>
+      <label><input type="checkbox" class="releaseCheck"> Rights and permissions are confirmed</label>
+      <button class="primary" id="checkRelease">Check Readiness</button>
+      <p id="releaseResult" class="muted"></p>
+      <div class="notice">Actual music distribution requires an external distributor account or API integration.</div>
+    </div>
+  </section>
+
+  <section class="page" id="Settings">
+    <h1>Settings</h1>
+    <div class="card">
+      <h2>Local Data</h2>
+      <p class="muted">Project details and selected settings are saved in your browser.</p>
+      <button class="danger" id="resetData">Reset Project Data</button>
+    </div>
+    <div class="card">
+      <h2>Prototype Limitations</h2>
+      <p class="muted">Real-time collaboration, cloud storage, AI stem separation, e-signatures, online payments and distribution APIs need a backend or third-party services.</p>
+    </div>
+  </section>
+</main>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function notify(message) {
+  const toast = $("toast");
+  toast.textContent = message;
+  toast.style.display = "block";
+  clearTimeout(notify.timer);
+  notify.timer = setTimeout(() => toast.style.display = "none", 2600);
+}
+
+function load(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function save(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[ch]));
+}
+
+let projects = load("studioflow-projects", [
+  { id: 1, name: "Midnight Dreams", genre: "Electronic", status: "In Progress" },
+  { id: 2, name: "Ocean Waves", genre: "Ambient", status: "Draft" },
+  { id: 3, name: "Golden Hour", genre: "Pop", status: "Completed" }
+]);
+
+let versions = load("studioflow-versions", []);
+let collaborators = load("studioflow-collaborators", [
+  { id: 1, name: "Mohan", email: "", role: "Producer" },
+  { id: 2, name: "Alex", email: "", role: "Composer" }
+]);
+let royalties = load("studioflow-royalties", [
+  { id: 1, name: "Mohan", role: "Producer", share: 50 },
+  { id: 2, name: "Alex", role: "Composer", share: 30 },
+  { id: 3, name: "Jamie", role: "Vocalist", share: 20 }
+]);
+
+let uploadedTracks = [];
+let messages = [];
+let audioContext = null;
+let beatTimer = null;
+let beatPlaying = false;
+let beatSteps = Array(16).fill(false);
+
+function showPage(page) {
+  document.querySelectorAll(".page").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".nav").forEach(el => el.classList.remove("active"));
+
+  const target = $(page);
+  if (target) target.classList.add("active");
+
+  const nav = document.querySelector(`.nav[data-page="${page}"]`);
+  if (nav) nav.classList.add("active");
+
+  if (page === "Mixer") renderMixer();
+}
+
+document.querySelectorAll(".nav").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.page));
+});
+
+document.querySelectorAll("[data-goto]").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.goto));
+});
+
+function projectCard(project, index) {
+  const colours = ["", "green", "orange"];
+  return `
+    <article class="card">
+      <div class="project-cover ${colours[index % colours.length]}">♫</div>
+      <h3>${escapeHTML(project.name)}</h3>
+      <p class="muted">${escapeHTML(project.genre)} · ${escapeHTML(project.status)}</p>
+      <button class="secondary" data-snapshot="${project.id}">Save Snapshot</button>
+      <button class="danger" data-delete-project="${project.id}">Delete</button>
+    </article>`;
+}
+
+function renderProjects() {
+  const query = $("search").value.toLowerCase().trim();
+  const filtered = projects.filter(p =>
+    p.name.toLowerCase().includes(query) ||
+    p.genre.toLowerCase().includes(query)
+  );
+
+  $("projectList").innerHTML = filtered.length
+    ? filtered.map(projectCard).join("")
+    : '<div class="empty">No matching projects found.</div>';
+
+  $("dashboardProjects").innerHTML = projects.length
+    ? projects.slice(0, 3).map(projectCard).join("")
+    : '<div class="empty">Create your first project.</div>';
+
+  $("projectCount").textContent = projects.length;
+  $("trackCount").textContent = uploadedTracks.length;
+  $("collabCount").textContent = collaborators.length;
+  $("versionCount").textContent = versions.length;
+
+  save("studioflow-projects", projects);
+}
+
+function createProject() {
+  const name = prompt("Enter project name:");
+  if (!name || !name.trim()) return;
+
+  const genre = prompt("Enter music genre:", "Electronic");
+  projects.unshift({
+    id: Date.now(),
+    name: name.trim(),
+    genre: (genre || "Unknown").trim(),
+    status: "In Progress"
+  });
+
+  renderProjects();
+  showPage("Projects");
+  notify("Project created");
+}
+
+$("newProject").addEventListener("click", createProject);
+$("newProject2").addEventListener("click", createProject);
+$("search").addEventListener("input", renderProjects);
+
+document.addEventListener("click", event => {
+  const deleteButton = event.target.closest("[data-delete-project]");
+  if (deleteButton) {
+    const id = Number(deleteButton.dataset.deleteProject);
+    if (confirm("Delete this project?")) {
+      projects = projects.filter(p => p.id !== id);
+      renderProjects();
+      notify("Project deleted");
+    }
+  }
+
+  const snapshotButton = event.target.closest("[data-snapshot]");
+  if (snapshotButton) {
+    const project = projects.find(p => p.id === Number(snapshotButton.dataset.snapshot));
+    if (!project) return;
+
+    versions.unshift({
+      id: Date.now(),
+      name: project.name,
+      date: new Date().toLocaleString(),
+      projects: JSON.parse(JSON.stringify(projects))
+    });
+
+    save("studioflow-versions", versions);
+    renderVersions();
+    renderProjects();
+    notify("Snapshot saved");
+  }
+});
+
+function renderWave() {
+  $("wave").innerHTML = Array.from({ length: 70 }, () => {
+    const height = 5 + Math.random() * 32;
+    return `<span style="height:${height}px"></span>`;
+  }).join("");
+}
+
+$("audioFiles").addEventListener("change", event => {
+  const files = Array.from(event.target.files || []);
+
+  files.forEach(file => {
+    if (!file.type.startsWith("audio/")) return;
+
+    const url = URL.createObjectURL(file);
+    uploadedTracks.push({
+      id: Date.now() + Math.random(),
+      name: file.name,
+      url,
+      volume: 80
+    });
+  });
+
+  renderUploads();
+  renderProjects();
+  event.target.value = "";
+});
+
+function renderUploads() {
+  $("uploadList").innerHTML = uploadedTracks.length
+    ? uploadedTracks.map(track => `
+      <div class="row">
+        <div class="grow">
+          <strong>${escapeHTML(track.name)}</strong>
+          <small>Local audio file</small>
+        </div>
+        <audio controls src="${track.url}"></audio>
+        <button class="danger" data-remove-track="${track.id}">Remove</button>
+      </div>
+    `).join("")
+    : '<div class="empty">No audio uploaded yet.</div>';
+
+  renderMixer();
+}
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-track]");
+  if (!button) return;
+
+  const track = uploadedTracks.find(t => String(t.id) === button.dataset.removeTrack);
+  if (track) URL.revokeObjectURL(track.url);
+
+  uploadedTracks = uploadedTracks.filter(t => String(t.id) !== button.dataset.removeTrack);
+  renderUploads();
+  renderProjects();
+});
+
+function renderMixer() {
+  $("masterLabel").textContent = $("masterVolume").value + "%";
+
+  $("mixerTracks").innerHTML = uploadedTracks.length
+    ? uploadedTracks.map(track => `
+      <div class="row">
+        <div class="grow">
+          <strong>${escapeHTML(track.name)}</strong>
+          <small>Track volume: ${track.volume}%</small>
+        </div>
+        <input type="range" min="0" max="100"
+          value="${track.volume}"
+          data-track-volume="${track.id}"
+          aria-label="Volume for ${escapeHTML(track.name)}">
+      </div>
+    `).join("")
+    : '<div class="empty">Upload an audio track to use the mixer.</div>';
+
+  applyVolume();
+}
+
+function applyVolume() {
+  const master = Number($("masterVolume").value) / 100;
+
+  document.querySelectorAll("#uploadList audio").forEach((audio, index) => {
+    const track = uploadedTracks[index];
+    if (track) audio.volume = master * track.volume / 100;
+  });
+}
+
+$("masterVolume").addEventListener("input", () => {
+  $("masterLabel").textContent = $("masterVolume").value + "%";
+  applyVolume();
+});
+
+document.addEventListener("input", event => {
+  const input = event.target.closest("[data-track-volume]");
+  if (!input) return;
+
+  const track = uploadedTracks.find(t => String(t.id) === input.dataset.trackVolume);
+  if (!track) return;
+
+  track.volume = Number(input.value);
+  renderMixer();
+});
+
+function renderVersions() {
+  $("versionList").innerHTML = versions.length
+    ? versions.map(version => `
+      <div class="row">
+        <div class="grow">
+          <strong>${escapeHTML(version.name || "Project Snapshot")}</strong>
+          <small>${escapeHTML(version.date || "")}</small>
+        </div>
+        <button class="secondary" data-restore="${version.id}">Restore</button>
+        <button class="danger" data-delete-version="${version.id}">Delete</button>
+      </div>
+    `).join("")
+    : '<div class="empty">No snapshots saved yet.</div>';
+
+  $("versionCount").textContent = versions.length;
+}
+
+$("saveVersion").addEventListener("click", () => {
+  versions.unshift({
+    id: Date.now(),
+    name: "All Projects Snapshot",
+    date: new Date().toLocaleString(),
+    projects: JSON.parse(JSON.stringify(projects))
+  });
+
+  save("studioflow-versions", versions);
+  renderVersions();
+  renderProjects();
+  notify("Snapshot saved");
+});
+
+document.addEventListener("click", event => {
+  const restoreButton = event.target.closest("[data-restore]");
+  if (restoreButton) {
+    const version = versions.find(v => v.id === Number(restoreButton.dataset.restore));
+    if (version && version.projects && confirm("Restore this project list?")) {
+      projects = JSON.parse(JSON.stringify(version.projects));
+      save("studioflow-projects", projects);
+      renderProjects();
+      notify("Project list restored");
+    }
+  }
+
+  const deleteButton = event.target.closest("[data-delete-version]");
+  if (deleteButton) {
+    versions = versions.filter(v => v.id !== Number(deleteButton.dataset.deleteVersion));
+    save("studioflow-versions", versions);
+    renderVersions();
+    renderProjects();
+  }
+});
+
+function renderCollaborators() {
+  $("collaboratorList").innerHTML = collaborators.length
+    ? collaborators.map(person => `
+      <div class="row">
+        <div class="grow">
+          <strong>${escapeHTML(person.name)}</strong>
+          <small>${escapeHTML(person.email || "No email")} · ${escapeHTML(person.role)}</small>
+        </div>
+        <button class="danger" data-remove-collab="${person.id}">Remove</button>
+      </div>
+    `).join("")
+    : '<div class="empty">No collaborators added.</div>';
+
+  $("collabCount").textContent = collaborators.length;
+}
+
+$("collabForm").addEventListener("submit", event => {
+  event.preventDefault();
+
+  collaborators.push({
+    id: Date.now(),
+    name: $("collabName").value.trim(),
+    email: $("collabEmail").value.trim(),
+    role: "Collaborator"
+  });
+
+  save("studioflow-collaborators", collaborators);
+  $("collabForm").reset();
+  renderCollaborators();
+  renderProjects();
+  notify("Collaborator added");
+});
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-collab]");
+  if (!button) return;
+
+  collaborators = collaborators.filter(c => c.id !== Number(button.dataset.removeCollab));
+  save("studioflow-collaborators", collaborators);
+  renderCollaborators();
+  renderProjects();
+});
+
+$("messageForm").addEventListener("submit", event => {
+  event.preventDefault();
+
+  messages.unshift({
+    text: $("messageText").value.trim(),
+    time: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit"
+    })
+  });
+
+  $("messageText").value = "";
+  renderMessages();
+});
+
+function renderMessages() {
+  $("messageList").innerHTML = messages.length
+    ? messages.map(message => `
+      <div class="row">
+        <div class="grow">
+          <strong>You · ${escapeHTML(message.time)}</strong>
+          <small>${escapeHTML(message.text)}</small>
+        </div>
+      </div>
+    `).join("")
+    : '<div class="empty">No messages yet.</div>';
+}
+
+function renderRoyalties() {
+  $("royaltyRows").innerHTML = royalties.map(person => `
+    <tr>
+      <td><input data-name="${person.id}" value="${escapeHTML(person.name)}" aria-label="Contributor name"></td>
+      <td><input data-role="${person.id}" value="${escapeHTML(person.role)}" aria-label="Contributor role"></td>
+      <td><input data-share="${person.id}" type="number" min="0" max="100" value="${person.share}" aria-label="Share percentage"></td>
+      <td><button class="danger" data-remove-royalty="${person.id}">×</button></td>
+    </tr>
+  `).join("");
+
+  const total = royalties.reduce((sum, person) => sum + Number(person.share || 0), 0);
+  $("royaltyTotal").textContent = total;
+  $("royaltyStatus").textContent = total === 100
+    ? "Valid split: 100%"
+    : total < 100
+      ? `Need ${100 - total}% more`
+      : `${total - 100}% over the limit`;
+
+  $("royaltyStatus").style.color = total === 100 ? "var(--green)" : "#ff8e9b";
+}
+
+$("royaltyRows").addEventListener("change", event => {
+  const input = event.target;
+  const id = Number(input.dataset.name || input.dataset.role || input.dataset.share);
+  const person = royalties.find(p => p.id === id);
+  if (!person) return;
+
+  if (input.dataset.name) person.name = input.value;
+  if (input.dataset.role) person.role = input.value;
+  if (input.dataset.share) {
+    person.share = Math.max(0, Math.min(100, Number(input.value) || 0));
+  }
+
+  renderRoyalties();
+});
+
+$("addRoyalty").addEventListener("click", () => {
+  royalties.push({
+    id: Date.now(),
+    name: "New Contributor",
+    role: "Contributor",
+    share: 0
+  });
+  renderRoyalties();
+});
+
+$("royaltyRows").addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-royalty]");
+  if (!button) return;
+
+  royalties = royalties.filter(p => p.id !== Number(button.dataset.removeRoyalty));
+  renderRoyalties();
+});
+
+$("saveRoyalty").addEventListener("click", () => {
+  const total = royalties.reduce((sum, person) => sum + Number(person.share || 0), 0);
+
+  if (total !== 100) {
+    notify("Royalty shares must total exactly 100%");
+    return;
+  }
+
+  save("studioflow-royalties", royalties);
+  notify("Royalty splits saved locally");
+});
+
+const beats = [
+  { name: "Neon Skyline", genre: "Synthwave", bpm: 112, price: "$29" },
+  { name: "Dusty Drums", genre: "Hip-Hop", bpm: 88, price: "$19" },
+  { name: "Blue Hour", genre: "R&B", bpm: 96, price: "$25" },
+  { name: "Forest Pulse", genre: "Ambient", bpm: 78, price: "$15" },
+  { name: "Summer Motion", genre: "Pop", bpm: 120, price: "$35" },
+  { name: "Night Drive", genre: "Trap", bpm: 140, price: "$22" }
+];
+
+$("beatList").innerHTML = beats.map((beat, index) => `
+  <article class="card">
+    <div class="project-cover ${index % 2 ? "green" : ""}">♫</div>
+    <h3>${escapeHTML(beat.name)}</h3>
+    <p class="muted">${escapeHTML(beat.genre)} · ${beat.bpm} BPM</p>
+    <h2>${beat.price}</h2>
+    <button class="secondary" data-beat="${index}">Preview Details</button>
+  </article>
+`).join("");
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-beat]");
+  if (!button) return;
+
+  const beat = beats[Number(button.dataset.beat)];
+  notify(`${beat.name}: sample listing only; checkout is not enabled.`);
+});
+
+function renderSteps() {
+  $("steps").innerHTML = beatSteps.map((on, index) => `
+    <button class="step ${on ? "on" : ""}" data-step="${index}" aria-label="Step ${index + 1}">
+      ${index + 1}
+    </button>
+  `).join("");
+}
+
+$("steps").addEventListener("click", event => {
+  const button = event.target.closest("[data-step]");
+  if (!button) return;
+
+  const index = Number(button.dataset.step);
+  beatSteps[index] = !beatSteps[index];
+  renderSteps();
+});
+
+function playSound(type) {
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const now = audioContext.currentTime;
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    if (type === "kick") {
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(140, now);
+      oscillator.frequency.exponentialRampToValueAtTime(45, now + 0.13);
+      gain.gain.setValueAtTime(0.6, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+    } else if (type === "snare") {
+      oscillator.type = "triangle";
+      oscillator.frequency.setValueAtTime(180, now);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    } else {
+      oscillator.type = "square";
+      oscillator.frequency.setValueAtTime(850, now);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+    }
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.18);
+  } catch {
+    notify("Audio playback is unavailable in this browser");
+  }
+}
+
+$("playBeat").addEventListener("click", () => {
+  if (beatPlaying) {
+    clearInterval(beatTimer);
+    beatTimer = null;
+    beatPlaying = false;
+    $("playBeat").textContent = "▶ Play Pattern";
+    document.querySelectorAll(".step").forEach(step => step.style.outline = "none");
+    return;
+  }
+
+  beatPlaying = true;
+  $("playBeat").textContent = "■ Stop Pattern";
+
+  let currentStep = 0;
+  const bpm = Math.max(40, Math.min(220, Number($("tempo").value) || 110));
+
+  beatTimer = setInterval(() => {
+    document.querySelectorAll(".step").forEach((step, index) => {
+      step.style.outline = index === currentStep ? "2px solid var(--green)" : "none";
+    });
+
+    if (beatSteps[currentStep]) {
+      playSound($("soundType").value);
+    }
+
+    currentStep = (currentStep + 1) % 16;
+  }, 60000 / bpm / 4);
+});
+
+$("clearBeat").addEventListener("click", () => {
+  beatSteps.fill(false);
+  renderSteps();
+});
+
+$("checkRelease").addEventListener("click", () => {
+  const checks = Array.from(document.querySelectorAll(".releaseCheck"));
+  const completed = checks.filter(check => check.checked).length;
+
+  $("releaseResult").textContent = completed === checks.length
+    ? "Checklist complete. Review the release with your distributor."
+    : `${completed} of ${checks.length} checklist items completed.`;
+});
+
+$("resetData").addEventListener("click", () => {
+  if (!confirm("Reset saved StudioFlow project data?")) return;
+
+  ["studioflow-projects", "studioflow-versions", "studioflow-collaborators", "studioflow-royalties"]
+    .forEach(key => localStorage.removeItem(key));
+
+  projects = [
+    { id: 1, name: "Midnight Dreams", genre: "Electronic", status: "In Progress" },
+    { id: 2, name: "Ocean Waves", genre: "Ambient", status: "Draft" },
+    { id: 3, name: "Golden Hour", genre: "Pop", status: "Completed" }
+  ];
+
+  versions = [];
+  collaborators = [];
+  royalties = [];
+
+  save("studioflow-projects", projects);
+  save("studioflow-versions", versions);
+  save("studioflow-collaborators", collaborators);
+  save("studioflow-royalties", royalties);
+
+  renderProjects();
+  renderVersions();
+  renderCollaborators();
+  renderRoyalties();
+  showPage("Dashboard");
+  notify("Local data reset");
+});
+
+renderProjects();
+renderWave();
+renderUploads();
+renderVersions();
+renderCollaborators();
+renderMessages();
+renderRoyalties();
+renderSteps();
+</script>
+</body>
+</html>
